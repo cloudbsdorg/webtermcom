@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+websockets
+asyncssh
+# pyvnc
+pydantic
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+cryptography
