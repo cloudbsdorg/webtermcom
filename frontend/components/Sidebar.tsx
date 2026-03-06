@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Session, ConnectionParams } from '../types';
-import { Plus, Terminal, Tv, Cpu, Share2, X, Hash } from 'lucide-react';
+import { Plus, Terminal, Tv, Cpu, Share2, X, Hash, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSubId, onSelect, onAdd, onDelete }) => {
+  const { t, i18n } = useTranslation();
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState<'ssh' | 'vnc' | 'serial' | 'telnet'>('ssh');
   const [formData, setFormData] = useState({ 
@@ -66,20 +68,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
   if (!isOpen) return null;
 
   return (
-    <div className="w-64 border-r border-zinc-800 flex flex-col shrink-0">
+    <div className="w-64 border-e border-zinc-800 flex flex-col shrink-0">
       <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
         <h1 className="font-bold text-lg">WebTermCom</h1>
-        <button onClick={() => setIsOpen(false)} className="lg:hidden p-1">
+        <button 
+          onClick={() => setIsOpen(false)} 
+          className="lg:hidden p-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Close sidebar"
+        >
           <X size={18} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2" role="navigation" aria-label="Sessions">
         <div className="flex justify-between items-center px-2 py-4">
-           <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sessions</h2>
+           <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{t('sidebar.title')}</h2>
            <button 
              onClick={() => setShowAdd(true)}
-             className="p-1 hover:bg-zinc-800 rounded text-zinc-400"
+             className="p-1 hover:bg-zinc-800 rounded text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             aria-label={t('sidebar.add_connection')}
            >
              <Plus size={16} />
            </button>
@@ -98,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
               {sub.params.type === 'vnc' && <Tv size={16} />}
               {sub.params.type === 'serial' && <Cpu size={16} />}
               {sub.params.type === 'telnet' && <Hash size={16} />}
-              <span className="truncate flex-1 text-left">
+              <span className="truncate flex-1 text-start">
                 {sub.params.host || sub.params.type.toUpperCase()}
               </span>
               
@@ -110,10 +117,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                     url.searchParams.set('s', session.id);
                     url.searchParams.set('sub', sub.id);
                     navigator.clipboard.writeText(url.toString());
-                    alert("Sub-session URL copied!");
+                    alert(t('common.url_copied'));
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-blue-400 transition-opacity"
-                  title="Share"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-blue-400 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label={t('common.share')}
+                  title={t('common.share')}
                 >
                   <Share2 size={14} />
                 </button>
@@ -122,10 +130,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                     e.stopPropagation();
                     setConfirmDelete(sub.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity"
-                  title="Delete"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  aria-label={t('sidebar.delete_connection')}
+                  title={t('sidebar.delete_connection')}
                 >
-                  <X size={14} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             </button>
@@ -133,20 +142,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
         </div>
       </div>
 
+      <div className="p-4 border-t border-zinc-800">
+        <label htmlFor="language-select" className="block text-[10px] text-zinc-500 uppercase font-bold mb-1">
+          Language
+        </label>
+        <select
+          id="language-select"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={i18n.language}
+          onChange={(e) => i18n.changeLanguage(e.target.value)}
+        >
+          {Object.entries(t('languages', { returnObjects: true }) || {})
+            .sort(([codeA, nameA], [codeB, nameB]) => {
+              if (codeA === 'en') return -1;
+              if (codeB === 'en') return 1;
+              return (nameA as string).localeCompare(nameB as string, i18n.language);
+            })
+            .map(([code, name]) => (
+              <option key={code} value={code}>
+                {name as string}
+              </option>
+            ))}
+        </select>
+      </div>
+
       {showAdd && (
         <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-full max-w-sm">
-            <h3 className="text-lg font-bold mb-4">Add Connection</h3>
-            <div className="flex gap-2 mb-4">
-              {['ssh', 'vnc', 'serial', 'telnet'].map((t) => (
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-full max-w-sm" role="dialog" aria-modal="true" aria-labelledby="add-conn-title">
+            <h3 id="add-conn-title" className="text-lg font-bold mb-4">{t('sidebar.add_connection')}</h3>
+            <div className="flex gap-2 mb-4" role="group" aria-label={t('sidebar.protocol')}>
+              {['ssh', 'vnc', 'serial', 'telnet'].map((type) => (
                 <button
-                  key={t}
-                  onClick={() => setNewType(t as any)}
-                  className={`flex-1 py-1 rounded text-[10px] border font-bold transition-all ${
-                    newType === t ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                  key={type}
+                  onClick={() => setNewType(type as any)}
+                  className={`flex-1 py-1 rounded text-[10px] border font-bold transition-all focus:outline-none focus:ring-2 focus:ring-white ${
+                    newType === type ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
                   }`}
+                  aria-pressed={newType === type}
                 >
-                  {t.toUpperCase()}
+                  {t(`protocols.${type}`)}
                 </button>
               ))}
             </div>
@@ -154,8 +188,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
               {newType !== 'serial' ? (
                 <>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Host / IP</label>
+                    <label htmlFor="host" className="text-[10px] text-zinc-500 uppercase font-bold px-1">{t('sidebar.host')}</label>
                     <input 
+                      id="host"
                       placeholder="e.g. 192.168.1.10" 
                       className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
                       value={formData.host}
@@ -164,8 +199,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Port (Optional)</label>
+                    <label htmlFor="port" className="text-[10px] text-zinc-500 uppercase font-bold px-1">{t('sidebar.port')}</label>
                     <input 
+                      id="port"
                       placeholder={newType === 'ssh' ? '22' : newType === 'vnc' ? '5900' : '23'} 
                       className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
                       value={formData.port}
@@ -175,19 +211,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                   {(newType === 'ssh' || newType === 'vnc') && (
                     <>
                       <div className="space-y-1">
-                        <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Username</label>
+                        <label htmlFor="username" className="text-[10px] text-zinc-500 uppercase font-bold px-1">{t('sidebar.username')}</label>
                         <input 
-                          placeholder="Username" 
+                          id="username"
+                          placeholder={t('sidebar.username')} 
                           className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
                           value={formData.username}
                           onChange={e => setFormData({...formData, username: e.target.value})}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Password</label>
+                        <label htmlFor="password" className="text-[10px] text-zinc-500 uppercase font-bold px-1">{t('sidebar.password')}</label>
                         <input 
+                          id="password"
                           type="password"
-                          placeholder="Password" 
+                          placeholder={t('sidebar.password')} 
                           className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
                           value={formData.password}
                           onChange={e => setFormData({...formData, password: e.target.value})}
@@ -200,8 +238,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] text-zinc-500 uppercase">Baud Rate</label>
+                      <label htmlFor="baudRate" className="text-[10px] text-zinc-500 uppercase">{t('sidebar.baud_rate')}</label>
                       <select 
+                        id="baudRate"
                         className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm"
                         value={formData.baudRate}
                         onChange={e => setFormData({...formData, baudRate: e.target.value})}
@@ -212,8 +251,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] text-zinc-500 uppercase">Data Bits</label>
+                      <label htmlFor="dataBits" className="text-[10px] text-zinc-500 uppercase">{t('sidebar.data_bits')}</label>
                       <select 
+                        id="dataBits"
                         className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm"
                         value={formData.dataBits}
                         onChange={e => setFormData({...formData, dataBits: e.target.value})}
@@ -223,8 +263,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] text-zinc-500 uppercase">Stop Bits</label>
+                      <label htmlFor="stopBits" className="text-[10px] text-zinc-500 uppercase">{t('sidebar.stop_bits')}</label>
                       <select 
+                        id="stopBits"
                         className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm"
                         value={formData.stopBits}
                         onChange={e => setFormData({...formData, stopBits: e.target.value})}
@@ -234,15 +275,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] text-zinc-500 uppercase">Parity</label>
+                      <label htmlFor="parity" className="text-[10px] text-zinc-500 uppercase">{t('sidebar.parity')}</label>
                       <select 
+                        id="parity"
                         className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-sm"
                         value={formData.parity}
                         onChange={e => setFormData({...formData, parity: e.target.value})}
                       >
-                        <option value="none">None</option>
-                        <option value="even">Even</option>
-                        <option value="odd">Odd</option>
+                        <option value="none">{t('sidebar.parity_none')}</option>
+                        <option value="even">{t('sidebar.parity_even')}</option>
+                        <option value="odd">{t('sidebar.parity_odd')}</option>
                       </select>
                     </div>
                   </div>
@@ -253,15 +295,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                 <button 
                   type="button"
                   onClick={() => setShowAdd(false)}
-                  className="flex-1 py-2 rounded text-sm bg-zinc-800 hover:bg-zinc-700"
+                  className="flex-1 py-2 rounded text-sm bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-white"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-2 rounded text-sm bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 py-2 rounded text-sm bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-white"
                 >
-                  Connect
+                  {t('common.add')}
                 </button>
               </div>
             </form>
@@ -271,26 +313,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
 
       {confirmDelete && (
         <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-full max-w-sm">
-            <h3 className="text-lg font-bold mb-2 text-red-400">Close Connection?</h3>
-            <p className="text-sm text-zinc-400 mb-6">
-              This will immediately terminate the connection and remove it from the session.
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-full max-w-sm" role="alertdialog" aria-labelledby="del-title" aria-describedby="del-desc">
+            <h3 id="del-title" className="text-lg font-bold mb-2 text-red-400">{t('sidebar.delete_connection')}?</h3>
+            <p id="del-desc" className="text-sm text-zinc-400 mb-6">
+              {t('sidebar.delete_confirm')}
             </p>
             <div className="flex gap-2">
               <button 
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 py-2 rounded text-sm bg-zinc-800 hover:bg-zinc-700"
+                className="flex-1 py-2 rounded text-sm bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-white"
               >
-                Keep
+                {t('common.cancel')}
               </button>
               <button 
                 onClick={() => {
                   onDelete(confirmDelete);
                   setConfirmDelete(null);
                 }}
-                className="flex-1 py-2 rounded text-sm bg-red-600 hover:bg-red-700"
+                className="flex-1 py-2 rounded text-sm bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-white"
               >
-                Close & Remove
+                {t('common.confirm')}
               </button>
             </div>
           </div>

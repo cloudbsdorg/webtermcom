@@ -57,7 +57,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({ sessionId, subId }) => {
     };
   }, [sessionId, subId]);
 
-  return <div ref={terminalRef} className="w-full h-full" />;
+  return <div ref={terminalRef} className="w-full h-full focus:outline-none focus:ring-2 focus:ring-blue-500" role="application" aria-label="Terminal connection" tabIndex={0} />;
 };
 
 export default TerminalComponent;

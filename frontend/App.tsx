@@ -3,11 +3,20 @@ import Sidebar from './components/Sidebar';
 import Viewport from './components/Viewport';
 import { Session, SubSession } from './types';
 import { createSession, getSessionInfo, addSubSession, deleteSubSession } from './api';
+import { useTranslation } from 'react-i18next';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const App: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [session, setSession] = useState<Session | null>(null);
   const [activeSubSessionId, setActiveSubSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Update document direction and language for RTL support and A11y
+  useEffect(() => {
+    document.documentElement.dir = i18n.dir();
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   // Sync session with URL
   useEffect(() => {
@@ -39,7 +48,7 @@ const App: React.FC = () => {
 
   const createNewSession = async () => {
     try {
-      const { id, session: newSession } = await createSession("My Session");
+      const { id, session: newSession } = await createSession(t('common.my_session'));
       setSession(newSession);
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('s', id);
@@ -114,13 +123,18 @@ const App: React.FC = () => {
         onAdd={handleAddSubSession}
         onDelete={handleDeleteSubSession}
       />
-      <main className="flex-1 relative flex flex-col min-w-0">
+      <main className="flex-1 relative flex flex-col min-w-0" role="main">
         <header className="h-12 border-b border-zinc-800 flex items-center px-4 justify-between shrink-0">
            <button 
              onClick={() => setSidebarOpen(!sidebarOpen)}
-             className="p-1 hover:bg-zinc-800 rounded text-zinc-400"
+             className="p-1 hover:bg-zinc-800 rounded text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             aria-label={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
            >
-             {sidebarOpen ? '←' : '→'}
+             {sidebarOpen ? (
+               i18n.dir() === 'rtl' ? <ChevronRight size={18} /> : <ChevronLeft size={18} />
+             ) : (
+               i18n.dir() === 'rtl' ? <ChevronLeft size={18} /> : <ChevronRight size={18} />
+             )}
            </button>
            <div className="text-sm font-medium">
              {session?.name} {activeSubSessionId ? ` / ${session?.sub_sessions[activeSubSessionId]?.params.type.toUpperCase()}` : ''}
@@ -129,11 +143,12 @@ const App: React.FC = () => {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
-                  alert("URL Copied!");
+                  alert(t('common.url_copied'));
                 }}
-                className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"
+                className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-white"
+                aria-label={t('common.share')}
               >
-                Share
+                {t('common.share')}
               </button>
            </div>
         </header>
@@ -145,7 +160,7 @@ const App: React.FC = () => {
             />
           ) : (
             <div className="flex items-center justify-center h-full text-zinc-500">
-              Select or create a session to start
+              {t('common.select_session')}
             </div>
           )}
         </div>

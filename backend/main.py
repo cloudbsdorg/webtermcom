@@ -4,18 +4,44 @@ from .models import sessions_db, create_session, get_session, add_sub_session, C
 from .ssh_handler import handle_ssh_session
 from .vnc_handler import handle_vnc_proxy
 from .telnet_handler import handle_telnet_session
-from datetime import datetime
+from .config import load_config, setup_logging, validate_config
+from datetime import datetime, timezone
 import json
+import argparse
+import sys
+import uvicorn
+
+# Parse command line arguments first to support --check-config and --dry-run
+parser = argparse.ArgumentParser(description="WebTermCom Application")
+parser.add_argument("--config", help="Path to the configuration file")
+parser.add_argument("--check-config", action="store_true", help="Validate the configuration and exit")
+parser.add_argument("--dry-run", action="store_true", help="Start with the config and exit immediately")
+args, unknown = parser.parse_known_args()
+
+if args.check_config:
+    path = args.config if args.config else "config.json" # Default if not specified
+    if validate_config(path):
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+config = load_config(args.config)
+setup_logging(config.log_level)
+
+if args.dry_run:
+    print("Dry-run successful.")
+    sys.exit(0)
 
 app = FastAPI(title="WebTermCom API", description="Backend for managing terminal and console sessions")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if config.allow_cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 @app.post("/sessions")
 async def create_new_session(name: str = "New Session"):
@@ -90,7 +116,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, subsession_i
     
     sub = session.sub_sessions[subsession_id]
     sub.active = True
-    session.last_active = datetime.now()
+    session.last_active = datetime.now(timezone.utc)
     
     try:
         if sub.params.type == "ssh":
@@ -129,3 +155,6 @@ async def delete_subsession_endpoint(session_id: str, subsession_id: str):
         del session.sub_sessions[subsession_id]
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Sub-session not found")
+
+if __name__ == "__main__":
+    uvicorn.run(app, host=config.host, port=config.port)

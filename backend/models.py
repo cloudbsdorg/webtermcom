@@ -1,7 +1,7 @@
 import uuid
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 
 class ConnectionParams(BaseModel):
     """
@@ -25,7 +25,7 @@ class SubSession(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     params: ConnectionParams
     active: bool = False
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class Session(BaseModel):
     """
@@ -34,8 +34,8 @@ class Session(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     sub_sessions: Dict[str, SubSession] = {}
-    created_at: datetime = Field(default_factory=datetime.now)
-    last_active: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_active: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # In-memory storage for sessions (for simplicity in this task, but should be a DB in production)
 sessions_db: Dict[str, Session] = {}

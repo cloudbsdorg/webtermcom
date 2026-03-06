@@ -1,7 +1,10 @@
 import pytest
+import os
+import json
 from backend.models import create_session, add_sub_session, ConnectionParams, get_session, sessions_db
 from fastapi.testclient import TestClient
 from backend.main import app
+from backend.config import AppConfig, validate_config
 
 client = TestClient(app)
 
@@ -84,3 +87,24 @@ def test_api_delete_session():
     response = client.delete(f"/sessions/{session.id}")
     assert response.status_code == 200
     assert session.id not in sessions_db
+
+def test_config_validation():
+    config_data = {"host": "127.0.0.1", "port": 9000, "log_level": "DEBUG"}
+    with open("test_config.json", "w") as f:
+        json.dump(config_data, f)
+    
+    assert validate_config("test_config.json") is True
+    os.remove("test_config.json")
+
+def test_invalid_config_validation():
+    with open("invalid_config.json", "w") as f:
+        f.write("not a json")
+    
+    assert validate_config("invalid_config.json") is False
+    os.remove("invalid_config.json")
+
+def test_app_config_defaults():
+    config = AppConfig()
+    assert config.host == "0.0.0.0"
+    assert config.port == 8000
+    assert config.log_level == "INFO"
