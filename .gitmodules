@@ -1,0 +1,3 @@
+[submodule ".guidelines"]
+	path = .guidelines
+	url = git@github.com:cloudbsdorg/application_guidelines.git
