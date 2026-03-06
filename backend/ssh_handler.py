@@ -55,15 +55,14 @@ async def handle_ssh_session(websocket: WebSocket, params):
             client_keys=None, # In production, use managed keys
             preferred_auth=['password', 'publickey', 'keyboard-interactive']
         ) as conn:
-            async with conn.create_session(
-                asyncssh.SSHClientSession,
+            stdin, stdout, stderr = await conn.open_session(
                 term_type='xterm-256color',
                 encoding='utf-8'
-            ) as (stdin, stdout, stderr):
-                # Using a simple piping task
-                t1 = asyncio.create_task(pipe_stdout_to_ws(stdout, websocket))
-                t2 = asyncio.create_task(pipe_ws_to_stdin(websocket, stdin, conn))
-                await asyncio.gather(t1, t2)
+            )
+            # Using a simple piping task
+            t1 = asyncio.create_task(pipe_stdout_to_ws(stdout, websocket))
+            t2 = asyncio.create_task(pipe_ws_to_stdin(websocket, stdin, conn))
+            await asyncio.gather(t1, t2)
     except Exception as e:
         import traceback
         error_msg = f"\r\n[SSH Connection Error to {params.host}: {str(e)}]\r\n"

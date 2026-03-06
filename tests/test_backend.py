@@ -52,3 +52,35 @@ def test_api_add_subsession_serial():
     assert data["params"]["type"] == "serial"
     assert data["params"]["baudRate"] == 9600
     assert data["params"]["parity"] == "none"
+
+def test_api_delete_subsession():
+    sessions_db.clear()
+    session = create_session("TestDelete")
+    params = {"type": "ssh", "host": "localhost"}
+    sub = add_sub_session(session.id, ConnectionParams(**params))
+    
+    response = client.delete(f"/sessions/{session.id}/subsessions/{sub.id}")
+    assert response.status_code == 200
+    assert sub.id not in sessions_db[session.id].sub_sessions
+
+def test_api_add_subsession_telnet():
+    sessions_db.clear()
+    session = create_session("TestTelnet")
+    params = {
+        "type": "telnet", 
+        "host": "localhost",
+        "port": 23
+    }
+    response = client.post(f"/sessions/{session.id}/subsessions", json=params)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["params"]["type"] == "telnet"
+    assert data["params"]["host"] == "localhost"
+    assert data["params"]["port"] == 23
+
+def test_api_delete_session():
+    sessions_db.clear()
+    session = create_session("TestDeleteSession")
+    response = client.delete(f"/sessions/{session.id}")
+    assert response.status_code == 200
+    assert session.id not in sessions_db

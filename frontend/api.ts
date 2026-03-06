@@ -43,6 +43,29 @@ export async function addSubSession(sessionId: string, params: ConnectionParams)
 }
 
 /**
+ * Deletes a sub-session from the backend.
+ * @param sessionId The parent session ID.
+ * @param subId The sub-session ID.
+ */
+export async function deleteSubSession(sessionId: string, subId: string): Promise<void> {
+  const resp = await fetch(`${API_BASE}/sessions/${sessionId}/subsessions/${subId}`, {
+    method: 'DELETE'
+  });
+  if (!resp.ok) throw new Error("Failed to delete sub-session");
+}
+
+/**
+ * Deletes a whole session from the backend.
+ * @param sessionId The session ID.
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  const resp = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+    method: 'DELETE'
+  });
+  if (!resp.ok) throw new Error("Failed to delete session");
+}
+
+/**
  * Constructs the WebSocket URL for a given sub-session.
  */
 export function getWebSocketUrl(sessionId: string, subId: string): string {

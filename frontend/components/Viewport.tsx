@@ -15,6 +15,9 @@ const Viewport: React.FC<ViewportProps> = ({ session, subSession }) => {
       {subSession.params.type === 'ssh' && (
         <TerminalComponent sessionId={session.id} subId={subSession.id} />
       )}
+      {subSession.params.type === 'telnet' && (
+        <TerminalComponent sessionId={session.id} subId={subSession.id} />
+      )}
       {subSession.params.type === 'vnc' && (
         <VNCComponent 
           sessionId={session.id} 

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .models import sessions_db, create_session, get_session, add_sub_session, ConnectionParams
 from .ssh_handler import handle_ssh_session
 from .vnc_handler import handle_vnc_proxy
+from .telnet_handler import handle_telnet_session
 from datetime import datetime
 import json
 
@@ -96,6 +97,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, subsession_i
             await handle_ssh_session(websocket, sub.params)
         elif sub.params.type == "vnc":
             await handle_vnc_proxy(websocket, sub.params)
+        elif sub.params.type == "telnet":
+            await handle_telnet_session(websocket, sub.params)
         elif sub.params.type == "serial":
             # Server-side serial proxy logic could be added here
             pass
@@ -103,3 +106,26 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, subsession_i
         pass
     finally:
         sub.active = False
+
+@app.delete("/sessions/{session_id}")
+async def delete_session_endpoint(session_id: str):
+    """
+    Delete a session and all its sub-sessions.
+    """
+    if session_id in sessions_db:
+        del sessions_db[session_id]
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="Session not found")
+
+@app.delete("/sessions/{session_id}/subsessions/{subsession_id}")
+async def delete_subsession_endpoint(session_id: str, subsession_id: str):
+    """
+    Delete a specific sub-session.
+    """
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if subsession_id in session.sub_sessions:
+        del session.sub_sessions[subsession_id]
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="Sub-session not found")

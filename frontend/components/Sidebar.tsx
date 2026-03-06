@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Session, ConnectionParams } from '../types';
-import { Plus, Terminal, Tv, Cpu, Share2, X } from 'lucide-react';
+import { Plus, Terminal, Tv, Cpu, Share2, X, Hash } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -9,11 +9,12 @@ interface SidebarProps {
   activeSubId: string | null;
   onSelect: (id: string) => void;
   onAdd: (params: ConnectionParams) => void;
+  onDelete: (id: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSubId, onSelect, onAdd }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSubId, onSelect, onAdd, onDelete }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [newType, setNewType] = useState<'ssh' | 'vnc' | 'serial'>('ssh');
+  const [newType, setNewType] = useState<'ssh' | 'vnc' | 'serial' | 'telnet'>('ssh');
   const [formData, setFormData] = useState({ 
     host: '', 
     port: '', 
@@ -25,12 +26,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
     parity: 'none'
   });
 
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Set default ports if not specified
+    let port = formData.port ? parseInt(formData.port) : undefined;
+    if (!port) {
+      if (newType === 'ssh') port = 22;
+      else if (newType === 'vnc') port = 5900;
+      else if (newType === 'telnet') port = 23;
+    }
+
     onAdd({
       type: newType,
       host: formData.host,
-      port: formData.port ? parseInt(formData.port) : undefined,
+      port: port,
       username: formData.username,
       password: formData.password,
       baudRate: formData.baudRate ? parseInt(formData.baudRate) : undefined,
@@ -78,29 +90,44 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
             <button
               key={sub.id}
               onClick={() => onSelect(sub.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors ${
+              className={`w-full group flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors ${
                 activeSubId === sub.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
               }`}
             >
               {sub.params.type === 'ssh' && <Terminal size={16} />}
               {sub.params.type === 'vnc' && <Tv size={16} />}
               {sub.params.type === 'serial' && <Cpu size={16} />}
+              {sub.params.type === 'telnet' && <Hash size={16} />}
               <span className="truncate flex-1 text-left">
                 {sub.params.host || sub.params.type.toUpperCase()}
               </span>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const url = new URL(window.location.origin);
-                  url.searchParams.set('s', session.id);
-                  url.searchParams.set('sub', sub.id);
-                  navigator.clipboard.writeText(url.toString());
-                  alert("Sub-session URL copied!");
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:text-blue-400"
-              >
-                <Share2 size={12} />
-              </button>
+              
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const url = new URL(window.location.origin);
+                    url.searchParams.set('s', session.id);
+                    url.searchParams.set('sub', sub.id);
+                    navigator.clipboard.writeText(url.toString());
+                    alert("Sub-session URL copied!");
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-blue-400 transition-opacity"
+                  title="Share"
+                >
+                  <Share2 size={14} />
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(sub.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-opacity"
+                  title="Delete"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </button>
           ))}
         </div>
@@ -111,47 +138,63 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
           <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-full max-w-sm">
             <h3 className="text-lg font-bold mb-4">Add Connection</h3>
             <div className="flex gap-2 mb-4">
-              {['ssh', 'vnc', 'serial'].map((t) => (
+              {['ssh', 'vnc', 'serial', 'telnet'].map((t) => (
                 <button
                   key={t}
                   onClick={() => setNewType(t as any)}
-                  className={`flex-1 py-1 rounded text-xs border ${
-                    newType === t ? 'bg-zinc-100 text-zinc-900 border-zinc-100' : 'border-zinc-700 text-zinc-400'
+                  className={`flex-1 py-1 rounded text-[10px] border font-bold transition-all ${
+                    newType === t ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
                   }`}
                 >
                   {t.toUpperCase()}
                 </button>
               ))}
             </div>
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {newType !== 'serial' ? (
                 <>
-                  <input 
-                    placeholder="Host / IP" 
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm"
-                    value={formData.host}
-                    onChange={e => setFormData({...formData, host: e.target.value})}
-                    required
-                  />
-                  <input 
-                    placeholder="Port" 
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm"
-                    value={formData.port}
-                    onChange={e => setFormData({...formData, port: e.target.value})}
-                  />
-                  <input 
-                    placeholder="Username" 
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm"
-                    value={formData.username}
-                    onChange={e => setFormData({...formData, username: e.target.value})}
-                  />
-                  <input 
-                    type="password"
-                    placeholder="Password" 
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm"
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                  />
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Host / IP</label>
+                    <input 
+                      placeholder="e.g. 192.168.1.10" 
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                      value={formData.host}
+                      onChange={e => setFormData({...formData, host: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Port (Optional)</label>
+                    <input 
+                      placeholder={newType === 'ssh' ? '22' : newType === 'vnc' ? '5900' : '23'} 
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                      value={formData.port}
+                      onChange={e => setFormData({...formData, port: e.target.value})}
+                    />
+                  </div>
+                  {(newType === 'ssh' || newType === 'vnc') && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Username</label>
+                        <input 
+                          placeholder="Username" 
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                          value={formData.username}
+                          onChange={e => setFormData({...formData, username: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-zinc-500 uppercase font-bold px-1">Password</label>
+                        <input 
+                          type="password"
+                          placeholder="Password" 
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                          value={formData.password}
+                          onChange={e => setFormData({...formData, password: e.target.value})}
+                        />
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 <div className="space-y-3">
@@ -222,6 +265,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, session, activeSub
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-2 text-red-400">Close Connection?</h3>
+            <p className="text-sm text-zinc-400 mb-6">
+              This will immediately terminate the connection and remove it from the session.
+            </p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2 rounded text-sm bg-zinc-800 hover:bg-zinc-700"
+              >
+                Keep
+              </button>
+              <button 
+                onClick={() => {
+                  onDelete(confirmDelete);
+                  setConfirmDelete(null);
+                }}
+                className="flex-1 py-2 rounded text-sm bg-red-600 hover:bg-red-700"
+              >
+                Close & Remove
+              </button>
+            </div>
           </div>
         </div>
       )}

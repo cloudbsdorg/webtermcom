@@ -1,5 +1,5 @@
 export interface ConnectionParams {
-  type: 'ssh' | 'vnc' | 'serial';
+  type: 'ssh' | 'vnc' | 'serial' | 'telnet';
   host?: string;
   port?: number;
   username?: string;

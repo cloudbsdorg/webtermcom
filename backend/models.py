@@ -7,7 +7,7 @@ class ConnectionParams(BaseModel):
     """
     Parameters for establishing a connection to a remote host.
     """
-    type: str  # "ssh", "vnc", "serial"
+    type: str  # "ssh", "vnc", "serial", "telnet"
     host: Optional[str] = None
     port: Optional[int] = None
     username: Optional[str] = None

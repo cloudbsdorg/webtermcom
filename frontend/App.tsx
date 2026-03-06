@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Viewport from './components/Viewport';
 import { Session, SubSession } from './types';
-import { createSession, getSessionInfo, addSubSession } from './api';
+import { createSession, getSessionInfo, addSubSession, deleteSubSession } from './api';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -77,6 +77,32 @@ const App: React.FC = () => {
     window.history.pushState({}, '', newUrl);
   };
 
+  const handleDeleteSubSession = async (subId: string) => {
+    if (!session) return;
+    try {
+      await deleteSubSession(session.id, subId);
+      setSession(prev => {
+        if (!prev) return prev;
+        const newSubs = { ...prev.sub_sessions };
+        delete newSubs[subId];
+        return { ...prev, sub_sessions: newSubs };
+      });
+      if (activeSubSessionId === subId) {
+        const remaining = Object.keys(session.sub_sessions).filter(id => id !== subId);
+        if (remaining.length > 0) {
+          selectSubSession(remaining[0]);
+        } else {
+          setActiveSubSessionId(null);
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('sub');
+          window.history.pushState({}, '', newUrl);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to delete sub-session", err);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-zinc-900 text-zinc-100 font-sans">
       <Sidebar 
@@ -86,6 +112,7 @@ const App: React.FC = () => {
         activeSubId={activeSubSessionId}
         onSelect={selectSubSession}
         onAdd={handleAddSubSession}
+        onDelete={handleDeleteSubSession}
       />
       <main className="flex-1 relative flex flex-col min-w-0">
         <header className="h-12 border-b border-zinc-800 flex items-center px-4 justify-between shrink-0">
